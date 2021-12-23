@@ -18,7 +18,7 @@ fi
 
 addLabel=$ADD_LABEL
 if [[ -n "$LABEL_NAME" ]]; then
-  echo "Warning: Plase define the ADD_LABEL variable instead of the deprecated LABEL_NAME."
+  echo "Warning: Please define the ADD_LABEL variable instead of the deprecated LABEL_NAME."
   addLabel=$LABEL_NAME
 fi
 
@@ -41,6 +41,8 @@ label_when_approved() {
   reviews=$(echo "$body" | jq --raw-output '.[] | {state: .state} | @base64')
 
   approvals=0
+  changesRequested=0
+  echo "reviews: $reviews"
 
   for r in $reviews; do
     review="$(echo "$r" | base64 -d)"
@@ -49,10 +51,14 @@ label_when_approved() {
     if [[ "$rState" == "APPROVED" ]]; then
       approvals=$((approvals+1))
     fi
+    echo "rState is: $rState"
+    if [[ "$rState" == "CHANGES_REQUESTED" ]]; then
+      changesRequested=$((changesRequested+1))
+    fi
 
     echo "${approvals}/${APPROVALS} approvals"
 
-    if [[ "$approvals" -ge "$APPROVALS" ]]; then
+    if [ -n "$CHANGES_REQUESTED" ] && [ "$changesRequested" -ge "$CHANGES_REQUESTED" ]; then
       echo "Labeling pull request"
 
       curl -sSL \
@@ -70,7 +76,65 @@ label_when_approved() {
             -X DELETE \
             "${URI}/repos/${GITHUB_REPOSITORY}/issues/${number}/labels/${REMOVE_LABEL}"
       fi
+      break
+    fi
 
+    if [ -n "$APPROVALS" ] && [ "$approvals" -ge "$APPROVALS" ]; then
+      echo "Labeling pull request"
+
+      curl -sSL \
+        -H "${AUTH_HEADER}" \
+        -H "${API_HEADER}" \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -d "{\"labels\":[\"${addLabel}\"]}" \
+        "${URI}/repos/${GITHUB_REPOSITORY}/issues/${number}/labels"
+
+      if [[ -n "$REMOVE_LABEL" ]]; then
+          curl -sSL \
+            -H "${AUTH_HEADER}" \
+            -H "${API_HEADER}" \
+            -X DELETE \
+            "${URI}/repos/${GITHUB_REPOSITORY}/issues/${number}/labels/${REMOVE_LABEL}"
+      fi
+      break
+    fi
+  done
+}
+
+label_changes_requested() {
+  # https://developer.github.com/v3/pulls/reviews/#list-reviews-on-a-pull-request
+  body=$(curl -sSL -H "${AUTH_HEADER}" -H "${API_HEADER}" "${URI}/repos/${GITHUB_REPOSITORY}/pulls/${number}/reviews?per_page=100")
+  reviews=$(echo "$body" | jq --raw-output '.[] | {state: .state} | @base64')
+
+  changesRequested=0
+
+  for r in $reviews; do
+    review="$(echo "$r" | base64 -d)"
+    rState=$(echo "$review" | jq --raw-output '.state')
+
+    if [[ "$rState" == "CHANGES_REQUESTED" ]]; then
+      changesRequested=$((changesRequested+1))
+    fi
+
+    if [ -n "$CHANGES_REQUESTED" ] && [ "$changesRequested" -ge "$CHANGES_REQUESTED" ]; then
+      echo "Labeling pull request"
+
+      curl -sSL \
+        -H "${AUTH_HEADER}" \
+        -H "${API_HEADER}" \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -d "{\"labels\":[\"${addLabel}\"]}" \
+        "${URI}/repos/${GITHUB_REPOSITORY}/issues/${number}/labels"
+
+      if [[ -n "$REMOVE_LABEL" ]]; then
+          curl -sSL \
+            -H "${AUTH_HEADER}" \
+            -H "${API_HEADER}" \
+            -X DELETE \
+            "${URI}/repos/${GITHUB_REPOSITORY}/issues/${number}/labels/${REMOVE_LABEL}"
+      fi
       break
     fi
   done
@@ -78,6 +142,7 @@ label_when_approved() {
 
 if [[ "$action" == "submitted" ]] && [[ "$state" == "approved" ]]; then
   label_when_approved
-else
+elif [[ "$action" == "submitted" ]] && [[ "$state" == "changes_requested" ]]; then
+  label_changes_requested
   echo "Ignoring event ${action}/${state}"
 fi
