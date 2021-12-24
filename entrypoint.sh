@@ -56,6 +56,7 @@ label_when_approved() {
     if [[ "$rState" == "CHANGES_REQUESTED" ]]; then
       changesRequested=$((changesRequested + 1))
     fi
+    break
   done
 
   echo "${approvals}/${APPROVALS} approvals"
@@ -88,7 +89,6 @@ label_when_approved() {
         -X DELETE \
         "${URI}/repos/${GITHUB_REPOSITORY}/issues/${number}/labels/CHANGES_REQUESTED"
     fi
-    break
   fi
 }
 
