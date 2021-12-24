@@ -55,7 +55,6 @@ label_when_approved() {
     elif [[ "$rState" == "CHANGES_REQUESTED" ]]; then
       changesRequested=$((changesRequested + 1))
     fi
-    break
   done
 
   echo "${approvals}/${APPROVALS} approvals"
@@ -133,5 +132,6 @@ if [[ "$action" == "submitted" ]] && [[ "$state" == "approved" ]]; then
   label_when_approved
 elif [[ "$action" == "submitted" ]] && [[ "$state" == "changes_requested" ]]; then
   label_changes_requested
+else
   echo "Ignoring event ${action}/${state}"
 fi
