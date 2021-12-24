@@ -80,7 +80,7 @@ label_when_approved() {
         "${URI}/repos/${GITHUB_REPOSITORY}/issues/${number}/labels/${REMOVE_LABEL}"
     fi
 
-    if [["$changesRequested" -lt "1"]]; then
+    if [[ $changesRequested==0 ]]; then
       echo "inside if when removing CHANGES_REQUESTED"
       curl -sSL \
         -H "${AUTH_HEADER}" \
@@ -105,6 +105,7 @@ label_changes_requested() {
     if [[ "$rState" == "CHANGES_REQUESTED" ]]; then
       changesRequested=$((changesRequested + 1))
     fi
+    break
   done
 
   if [ -n "$CHANGES_REQUESTED" ] && [ "$changesRequested" -ge "$CHANGES_REQUESTED" ]; then
@@ -125,7 +126,6 @@ label_changes_requested() {
         -X DELETE \
         "${URI}/repos/${GITHUB_REPOSITORY}/issues/${number}/labels/${REMOVE_LABEL}"
     fi
-    break
   fi
 }
 
