@@ -57,6 +57,7 @@ label_when_approved() {
   done
 
   echo "${approvals}/${APPROVALS} approvals"
+  echo "changesRequested: $changesRequested"
 
   if [ -n "$APPROVALS" ] && [ "$approvals" -ge "$APPROVALS" ]; then
     echo "Labeling pull request"
@@ -78,6 +79,7 @@ label_when_approved() {
     fi
 
     if [["$changesRequested" -lt "1"]]; then
+      echo "inside if when removing CHANGES_REQUESTED"
       curl -sSL \
         -H "${AUTH_HEADER}" \
         -H "${API_HEADER}" \
