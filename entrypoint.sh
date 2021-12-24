@@ -52,8 +52,7 @@ label_when_approved() {
 
     if [[ "$rState" == "APPROVED" ]]; then
       approvals=$((approvals + 1))
-    fi
-    if [[ "$rState" == "CHANGES_REQUESTED" ]]; then
+    elif [[ "$rState" == "CHANGES_REQUESTED" ]]; then
       changesRequested=$((changesRequested + 1))
     fi
     break
